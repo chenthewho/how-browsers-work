@@ -128,10 +128,10 @@ export class CSSParser {
       const declaration = this.parseDeclaration();
       if (declaration) {
         declarations.push(declaration);
+      } else {
+        // 解析失败时跳过非法内容
+        this.skipToNextDeclaration();
       }
-
-      // 跳过到下一个声明
-      this.skipToNextDeclaration();
     }
 
     return declarations;

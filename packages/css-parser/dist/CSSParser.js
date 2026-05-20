@@ -107,8 +107,10 @@ class CSSParser {
             if (declaration) {
                 declarations.push(declaration);
             }
-            // 跳过到下一个声明
-            this.skipToNextDeclaration();
+            else {
+                // 解析失败时跳过非法内容
+                this.skipToNextDeclaration();
+            }
         }
         return declarations;
     }

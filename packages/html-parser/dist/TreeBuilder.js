@@ -238,8 +238,9 @@ class HTMLTreeBuilder {
             // <title>/<style>/<script> 触发 TEXT 模式
             // 保存当前的插入模式，以便结束后恢复
             this.originalInsertionMode = this.insertionMode;
-            this.insertElement(token);
-            this.openElements.push(this._lastInserted());
+            const el = this.insertElement(token);
+            this.openElements.push(el);
+            this.currentNode = el;
             this.insertionMode = InsertionMode.TEXT;
         }
         else if (tagName === 'noscript') {
@@ -549,9 +550,10 @@ class HTMLTreeBuilder {
      */
     handleEndTagInBody(tagName) {
         // 特殊元素列表中的元素需要通过显式的结束标签关闭
-        if (tagName === 'body') {
-            // 回到 AFTER_BODY 状态
-            this.insertionMode = InsertionMode.AFTER_HEAD;
+        if (tagName === 'body' || tagName === 'html') {
+            // 遇到 </body> 或 </html> 时保持当前模式（不切换）
+            // 实际规范中是 "after body" / "after after body" 模式
+            // 简化实现：保持 IN_BODY，忽略这些闭合标签的模式切换
             return;
         }
         if (tagName === 'html') {

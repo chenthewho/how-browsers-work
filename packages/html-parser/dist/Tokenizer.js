@@ -245,7 +245,7 @@ class HTMLTokenizer {
             this.emitCurrentToken();
             this.state = State.DATA;
         }
-        else if (isLetter(ch)) {
+        else if (isLetter(ch) || isDigit(ch)) {
             // 标签名大小写不敏感，统一转小写
             this.currentToken.tagName += ch.toLowerCase();
         }
@@ -799,6 +799,9 @@ function isWhitespace(ch) {
 }
 function isLetter(ch) {
     return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+}
+function isDigit(ch) {
+    return ch >= '0' && ch <= '9';
 }
 function isStartTag(token) {
     return token.type === Token_1.TokenType.START_TAG;

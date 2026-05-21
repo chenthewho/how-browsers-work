@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Browsers Work — 浏览器原理可视化</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 顶部工具栏 -->
+<header id="toolbar">
+  <span class="logo">🔬 How Browsers Work</span>
+
+  <div class="toolbar-controls">
+    <button id="btn-render" class="btn-primary">▶ 渲染</button>
+    <label class="viewport-label">视口:
+      <input id="input-width" type="number" value="800" min="200" max="2000" step="50"> ×
+      <input id="input-height" type="number" value="600" min="200" max="2000" step="50">
+    </label>
+    <button id="btn-zoom-in" title="放大">🔍+</button>
+    <button id="btn-zoom-out" title="缩小">🔍-</button>
+    <button id="btn-reset" title="重置">↺</button>
+  </div>
+</header>
+
+<!-- 源码输入区（可折叠） -->
+<section id="source-panel">
+  <div class="source-col">
+    <div class="source-header">HTML</div>
+    <textarea id="html-input" spellcheck="false"><!DOCTYPE html>
+<html>
+<head><title>Demo</title></head>
+<body>
+  <div id="main" class="container">
+    <h1>Hello World</h1>
+    <p>This is a <strong>bold</strong> text.</p>
+    <p>Second paragraph with <span class="hl">highlight</span>.</p>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+    </ul>
+  </div>
+</body>
+</html></textarea>
+  </div>
+  <div class="source-col">
+    <div class="source-header">CSS</div>
+    <textarea id="css-input" spellcheck="false">body {
+  background: #fff;
+  font-size: 16px;
+}
+#main {
+  margin: 30px auto;
+  width: 600px;
+  padding: 20px;
+  background: #f5f5f5;
+}
+h1 { color: #333; font-size: 24px; }
+p { color: #666; margin: 10px 0; }
+strong { color: #c00; font-weight: bold; }
+.hl { color: #06c; font-weight: bold; }
+li { margin: 5px 0; }</textarea>
+  </div>
+  <button id="btn-toggle-source" title="收起源码面板">▲</button>
+</section>
+
+<!-- 主工作区：三栏布局 -->
+<main id="workspace">
+
+  <!-- 左栏：DOM 树 + Token 流 -->
+  <aside id="left-panel">
+    <div class="panel-tabs">
+      <button class="tab active" data-tab="dom">DOM 树</button>
+      <button class="tab" data-tab="tokens">Token 流</button>
+      <button class="tab" data-tab="rules">CSS 规则</button>
+    </div>
+    <div class="panel-content" id="dom-tree">
+      <div class="placeholder">点击「渲染」查看 DOM 树</div>
+    </div>
+    <div class="panel-content hidden" id="token-list">
+      <div class="placeholder">点击「渲染」查看 Token 流</div>
+    </div>
+    <div class="panel-content hidden" id="css-rules">
+      <div class="placeholder">点击「渲染」查看 CSS 规则</div>
+    </div>
+  </aside>
+
+  <!-- 中栏：布局画布 -->
+  <section id="center-panel">
+    <canvas id="layout-canvas"></canvas>
+    <div id="canvas-tooltip" class="hidden"></div>
+    <div class="canvas-placeholder" id="canvas-placeholder">
+      点击「渲染」查看布局可视化
+    </div>
+  </section>
+
+  <!-- 右栏：元素详情（Styles + Box Model） -->
+  <aside id="right-panel">
+    <div class="panel-header">元素详情</div>
+    <div id="element-info" class="placeholder">选择一个元素查看详情</div>
+    <div id="styles-panel" class="hidden">
+      <div class="section-title">Styles</div>
+      <div id="styles-list"></div>
+    </div>
+    <div id="box-model-panel" class="hidden">
+      <div class="section-title">Box Model</div>
+      <canvas id="box-model-canvas" width="240" height="240"></canvas>
+      <div id="box-model-values"></div>
+    </div>
+  </aside>
+
+</main>
+
+<!-- 底部状态栏 -->
+<footer id="statusbar">
+  <span id="status-text">就绪</span>
+  <span id="status-stats"></span>
+</footer>
+
+<script src="bundle.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

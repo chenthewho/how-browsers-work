@@ -8,6 +8,22 @@
 
 ---
 
+## 🎨 交互式可视化
+
+在浏览器中实时查看渲染流水线每一步的中间结果：
+
+1. 打开 `packages/visualizer/public/index.html`
+2. 输入 HTML + CSS，点击「渲染」
+3. 查看 DOM 树、Token 流、布局画布、CSS 层叠、盒模型图
+
+或在终端构建后打开：
+
+```bash
+cd packages/visualizer && node build.mjs && open public/index.html
+```
+
+---
+
 ## 为什么会有这个项目
 
 作为前端工程师，每天使用浏览器但很少了解其内部机制。这个项目通过**亲手实现**一个最小但功能正确的浏览器，来深入理解：

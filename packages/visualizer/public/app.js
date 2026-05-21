@@ -130,11 +130,14 @@ function buildDOMNode(element, parent, depth) {
   div.style.paddingLeft = (depth * 14 + 4) + 'px';
   div.dataset.boxId = element._boxId; // 关联布局盒子
 
-  // 展开/折叠箭头：有元素子节点时才显示
-  let hasElChildren = false;
+  // 统计子元素（一趟扫描完成）
+  let elChildren = 0;
   let c = element.firstChild;
-  while (c) { if (c.nodeType === 1) hasElChildren = true; c = c.nextSibling; }
-  const hasChildren = hasElChildren;
+  while (c) {
+    if (c.nodeType === 1) elChildren++;
+    c = c.nextSibling;
+  }
+  const hasChildren = elChildren > 0;
 
   const expand = document.createElement('span');
   expand.className = 'expand';
@@ -170,13 +173,7 @@ function buildDOMNode(element, parent, depth) {
     div.appendChild(t);
   }
 
-  // 统计子元素
-  let elChildren = 0;
-  let c = element.firstChild;
-  while (c) {
-    if (c.nodeType === 1) elChildren++;
-    c = c.nextSibling;
-  }
+  // 显示子元素数量
   if (elChildren > 0 && !text) {
     const count = document.createElement('span');
     count.className = 'text';

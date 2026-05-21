@@ -2847,8 +2847,8 @@ var Browser = (() => {
       }
       this.pos++;
       this.skipWhitespace();
-      const value = this.parseValue();
-      if (!value) {
+      const values = this.parseValueList();
+      if (values.length === 0) {
         return null;
       }
       let important = false;
@@ -2865,7 +2865,41 @@ var Browser = (() => {
       if (this.current().type === "semicolon" /* SEMICOLON */) {
         this.pos++;
       }
-      return { property, value, important };
+      return {
+        property,
+        value: values[0],
+        values: values.length > 1 ? values : void 0,
+        important
+      };
+    }
+    /**
+     * 解析 CSS 值列表（支持多值简写，如 margin: 30px auto）
+     */
+    parseValueList() {
+      const values = [];
+      while (!this.isEOF()) {
+        this.skipWhitespace();
+        const token = this.current();
+        if (token.type === "semicolon" /* SEMICOLON */ || token.type === "close-brace" /* CLOSE_BRACE */ || token.type === "eof" /* EOF */) {
+          break;
+        }
+        if (token.type === "delim" /* DELIM */ && token.value === "!") {
+          break;
+        }
+        const value = this.parseSingleValue();
+        if (value) {
+          values.push(value);
+        } else {
+          this.pos++;
+        }
+      }
+      return values;
+    }
+    /**
+     * 解析单个 CSS 值
+     */
+    parseSingleValue() {
+      return this.parseValue();
     }
     /**
      * 解析 CSS 值
@@ -2875,9 +2909,6 @@ var Browser = (() => {
      *   - 数值 + 单位：16px, 2em, 50%
      *   - 颜色：red, #ff0000, rgb(255, 0, 0)
      *   - 函数：calc(), rgba(), var()
-     *   - 复合值：1px solid red（表现为多个值的序列）
-     *
-     * 简化处理：将值序列拼接到一起，解析第一个值为主要类型
      */
     parseValue() {
       const token = this.current();
@@ -3394,6 +3425,7 @@ var Browser = (() => {
                 result.push({
                   property: decl.property,
                   value: decl.value,
+                  values: decl.values,
                   important: decl.important,
                   origin: sheet.origin,
                   specificity,
@@ -3520,7 +3552,22 @@ var Browser = (() => {
           break;
         // 外边距
         case "margin":
-          if (value.type === "length") {
+          if (decl.values && decl.values.length > 1) {
+            const vals = decl.values.map((v) => resolveMarginValue(v, style.fontSize));
+            if (vals.length === 2) {
+              style.marginTop = style.marginBottom = vals[0];
+              style.marginRight = style.marginLeft = vals[1];
+            } else if (vals.length === 3) {
+              style.marginTop = vals[0];
+              style.marginRight = style.marginLeft = vals[1];
+              style.marginBottom = vals[2];
+            } else if (vals.length === 4) {
+              style.marginTop = vals[0];
+              style.marginRight = vals[1];
+              style.marginBottom = vals[2];
+              style.marginLeft = vals[3];
+            }
+          } else if (value.type === "length") {
             const val = resolveLength(value, style.fontSize, 0);
             style.marginTop = style.marginRight = style.marginBottom = style.marginLeft = val;
           } else if (value.type === "keyword" && value.value === "auto") {
@@ -3713,6 +3760,12 @@ var Browser = (() => {
     return resolveToPx(value, fontSize);
   }
   function resolveLengthOrAuto(value, fontSize) {
+    if (value.type === "keyword" && value.value === "auto") {
+      return "auto";
+    }
+    return resolveToPx(value, fontSize);
+  }
+  function resolveMarginValue(value, fontSize) {
     if (value.type === "keyword" && value.value === "auto") {
       return "auto";
     }
@@ -3986,23 +4039,44 @@ summary { display: block; }
         }
       }
       for (const child of blockChildren) {
+        const mt = typeof child.margin.top === "number" ? child.margin.top : 0;
         const collapsedMargin = this.collapseMargins(
           previousChildBottomMargin,
-          child.margin.top
+          mt
         );
         if (blockChildren.indexOf(child) === 0) {
-          currentY += child.margin.top;
+          currentY += mt;
         } else {
           if (collapsedMargin > previousChildBottomMargin) {
             currentY += collapsedMargin - previousChildBottomMargin;
           }
         }
-        child.rect.x = box.padding.left + child.margin.left;
-        child.rect.y = currentY;
+        const marginLeft = typeof child.margin.left === "number" ? child.margin.left : 0;
+        const marginRight = typeof child.margin.right === "number" ? child.margin.right : 0;
+        const isAutoLeft = child.margin.left === "auto";
+        const isAutoRight = child.margin.right === "auto";
+        let availableWidth = contentWidth - marginLeft - marginRight - child.border.left - child.border.right - child.padding.left - child.padding.right;
+        if (!isAutoLeft) availableWidth -= marginLeft;
+        if (!isAutoRight) availableWidth -= marginRight;
         this.layoutBox(child, contentWidth);
-        const childTotalHeight = child.rect.height + child.margin.top + child.margin.bottom + child.border.top + child.border.bottom + child.padding.top + child.padding.bottom;
-        currentY = child.rect.y + child.rect.height + child.padding.top + child.padding.bottom + child.border.top + child.border.bottom + child.margin.bottom;
-        previousChildBottomMargin = child.margin.bottom;
+        if (isAutoLeft || isAutoRight) {
+          const totalMargin = contentWidth - child.rect.width - (isAutoLeft ? 0 : marginLeft + child.border.left + child.padding.left) - (isAutoRight ? 0 : marginRight + child.border.right + child.padding.right) - child.border.left - child.border.right - child.padding.left - child.padding.right;
+          if (isAutoLeft && isAutoRight) {
+            const autoM = Math.max(0, totalMargin / 2);
+            child.rect.x = box.padding.left + autoM;
+          } else if (isAutoLeft) {
+            child.rect.x = box.padding.left + Math.max(0, totalMargin);
+          } else {
+            child.rect.x = box.padding.left + marginLeft;
+          }
+        } else {
+          child.rect.x = box.padding.left + marginLeft;
+        }
+        child.rect.y = currentY;
+        const mb = typeof child.margin.bottom === "number" ? child.margin.bottom : 0;
+        const childTotalHeight = child.rect.height + mt + mb + child.border.top + child.border.bottom + child.padding.top + child.padding.bottom;
+        currentY = child.rect.y + child.rect.height + child.padding.top + child.padding.bottom + child.border.top + child.border.bottom + mb;
+        previousChildBottomMargin = mb;
       }
       if (inlineChildren.length > 0) {
         this.layoutInlineChildren(box, inlineChildren, contentWidth, currentY);

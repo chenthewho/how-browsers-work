@@ -44,7 +44,8 @@ export interface StyleRule {
 // ============================================================
 export interface CSSDeclaration {
   property: string;       // 属性名，如 "color"
-  value: CSSValue;        // 解析后的值
+  value: CSSValue;        // 解析后的第一个值（向后兼容）
+  values?: CSSValue[];    // 多值属性的完整值列表，如 margin: 30px auto → [30px, auto]
   important: boolean;     // 是否有 !important 标记
 }
 

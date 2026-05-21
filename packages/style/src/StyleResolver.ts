@@ -45,6 +45,7 @@ import {
 interface StyleDeclarationItem {
   property: string;
   value: CSSValue;
+  values?: CSSValue[];    // 多值简写的完整值列表
   important: boolean;
   origin: StyleOrigin;
   specificity: [number, number, number];
@@ -153,6 +154,7 @@ export class StyleResolver {
               result.push({
                 property: decl.property,
                 value: decl.value,
+                values: decl.values,
                 important: decl.important,
                 origin: sheet.origin,
                 specificity,
@@ -278,7 +280,23 @@ export class StyleResolver {
 
       // 外边距
       case 'margin':
-        if (value.type === 'length') {
+        if (decl.values && decl.values.length > 1) {
+          // 多值简写：margin: 30px auto / margin: 10px 20px 30px 40px
+          const vals = decl.values.map(v => resolveMarginValue(v, style.fontSize));
+          if (vals.length === 2) {
+            style.marginTop = style.marginBottom = vals[0];     // 上下
+            style.marginRight = style.marginLeft = vals[1];    // 左右
+          } else if (vals.length === 3) {
+            style.marginTop = vals[0];
+            style.marginRight = style.marginLeft = vals[1];
+            style.marginBottom = vals[2];
+          } else if (vals.length === 4) {
+            style.marginTop = vals[0];
+            style.marginRight = vals[1];
+            style.marginBottom = vals[2];
+            style.marginLeft = vals[3];
+          }
+        } else if (value.type === 'length') {
           const val = resolveLength(value, style.fontSize, 0);
           style.marginTop = style.marginRight = style.marginBottom = style.marginLeft = val;
         } else if (value.type === 'keyword' && value.value === 'auto') {
@@ -500,6 +518,16 @@ function resolveLength(value: CSSValue, fontSize: number, fallback: number): num
  * 解析长度值或 auto
  */
 function resolveLengthOrAuto(value: CSSValue, fontSize: number): number | 'auto' {
+  if (value.type === 'keyword' && value.value === 'auto') {
+    return 'auto';
+  }
+  return resolveToPx(value, fontSize);
+}
+
+/**
+ * 解析 margin 简写中的单个值
+ */
+function resolveMarginValue(value: CSSValue, fontSize: number): number | 'auto' {
   if (value.type === 'keyword' && value.value === 'auto') {
     return 'auto';
   }

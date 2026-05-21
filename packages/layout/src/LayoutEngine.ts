@@ -128,9 +128,10 @@ export class LayoutEngine {
       // 当两个相邻的块级元素的垂直外边距相遇时，它们会合并
       // 合并后的外边距 = max(margin1, margin2)，而不是 margin1 + margin2
       // Chrome 中对应 LayoutBlock::CollapseMargins()
+      const mt = typeof child.margin.top === 'number' ? child.margin.top : 0;
       const collapsedMargin = this.collapseMargins(
         previousChildBottomMargin,
-        child.margin.top
+        mt
       );
 
       // 上一个子元素的底部到当前子元素的顶部：
@@ -138,7 +139,7 @@ export class LayoutEngine {
       // 当前顶部 = 上一个底部 + 合并后的 margin
       // 但第一个子元素的 margin-top 直接加到 currentY 上（没有前一个的 margin 合并）
       if (blockChildren.indexOf(child) === 0) {
-        currentY += child.margin.top;
+        currentY += mt;
       } else {
         // 前一个和当前的 margin 已经合并，所以加 collapsed
         // 但前一个的 margin-bottom 已经在 previousChildBottomMargin 中了
@@ -149,15 +150,49 @@ export class LayoutEngine {
       }
 
       // 设置子元素的位置（相对于包含块的内容区）
-      child.rect.x = box.padding.left + child.margin.left;
-      child.rect.y = currentY;
+      // 处理 auto margin（水平居中）
+      const marginLeft = typeof child.margin.left === 'number' ? child.margin.left : 0;
+      const marginRight = typeof child.margin.right === 'number' ? child.margin.right : 0;
+      const isAutoLeft = child.margin.left === 'auto';
+      const isAutoRight = child.margin.right === 'auto';
 
-      // 计算子元素的宽度
+      // 计算子元素可用宽度
+      let availableWidth = contentWidth - marginLeft - marginRight
+        - child.border.left - child.border.right
+        - child.padding.left - child.padding.right;
+      if (!isAutoLeft) availableWidth -= marginLeft;
+      if (!isAutoRight) availableWidth -= marginRight;
+
+      // 计算子元素的实际内容宽度
       this.layoutBox(child, contentWidth);
 
+      // 处理 auto margin 居中
+      if (isAutoLeft || isAutoRight) {
+        const totalMargin = contentWidth - child.rect.width
+          - (isAutoLeft ? 0 : (marginLeft + child.border.left + child.padding.left))
+          - (isAutoRight ? 0 : (marginRight + child.border.right + child.padding.right))
+          - child.border.left - child.border.right
+          - child.padding.left - child.padding.right;
+
+        if (isAutoLeft && isAutoRight) {
+          // 双 auto：水平居中
+          const autoM = Math.max(0, totalMargin / 2);
+          child.rect.x = box.padding.left + autoM;
+        } else if (isAutoLeft) {
+          child.rect.x = box.padding.left + Math.max(0, totalMargin);
+        } else {
+          child.rect.x = box.padding.left + marginLeft;
+        }
+      } else {
+        child.rect.x = box.padding.left + marginLeft;
+      }
+      child.rect.y = currentY;
+
       // 子元素高度（包含内容的完整高度）
+      // 处理 auto margin：垂直方向 auto = 0（mt 已在上面声明）
+      const mb = typeof child.margin.bottom === 'number' ? child.margin.bottom : 0;
       const childTotalHeight = child.rect.height +
-        child.margin.top + child.margin.bottom +
+        mt + mb +
         child.border.top + child.border.bottom +
         child.padding.top + child.padding.bottom;
 
@@ -165,10 +200,10 @@ export class LayoutEngine {
       currentY = child.rect.y + child.rect.height +
         child.padding.top + child.padding.bottom +
         child.border.top + child.border.bottom +
-        child.margin.bottom;
+        mb;
 
       // 记录当前子元素的底部外边距，用于下一个子元素的外边距合并
-      previousChildBottomMargin = child.margin.bottom;
+      previousChildBottomMargin = mb;
     }
 
     // 布局行内子元素（如果有）

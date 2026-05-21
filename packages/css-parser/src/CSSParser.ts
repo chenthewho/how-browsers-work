@@ -161,9 +161,9 @@ export class CSSParser {
 
     this.skipWhitespace();
 
-    // 解析属性值
-    const value = this.parseValue();
-    if (!value) {
+    // 解析属性值（支持多值简写，如 margin: 30px auto）
+    const values = this.parseValueList();
+    if (values.length === 0) {
       return null;
     }
 
@@ -186,7 +186,52 @@ export class CSSParser {
       this.pos++; // 跳过 ;
     }
 
-    return { property, value, important };
+    return {
+      property,
+      value: values[0],
+      values: values.length > 1 ? values : undefined,
+      important,
+    };
+  }
+
+  /**
+   * 解析 CSS 值列表（支持多值简写，如 margin: 30px auto）
+   */
+  private parseValueList(): CSSValue[] {
+    const values: CSSValue[] = [];
+
+    while (!this.isEOF()) {
+      this.skipWhitespace();
+      const token = this.current();
+
+      // 遇到以下 token 说明值列表结束
+      if (token.type === CSSTokenType.SEMICOLON ||
+          token.type === CSSTokenType.CLOSE_BRACE ||
+          token.type === CSSTokenType.EOF) {
+        break;
+      }
+      // !important 也结束值列表，由调用方处理
+      if (token.type === CSSTokenType.DELIM && token.value === '!') {
+        break;
+      }
+
+      const value = this.parseSingleValue();
+      if (value) {
+        values.push(value);
+      } else {
+        // 无法解析的 token，跳过
+        this.pos++;
+      }
+    }
+
+    return values;
+  }
+
+  /**
+   * 解析单个 CSS 值
+   */
+  private parseSingleValue(): CSSValue | null {
+    return this.parseValue();
   }
 
   /**
@@ -197,9 +242,6 @@ export class CSSParser {
    *   - 数值 + 单位：16px, 2em, 50%
    *   - 颜色：red, #ff0000, rgb(255, 0, 0)
    *   - 函数：calc(), rgba(), var()
-   *   - 复合值：1px solid red（表现为多个值的序列）
-   *
-   * 简化处理：将值序列拼接到一起，解析第一个值为主要类型
    */
   private parseValue(): CSSValue | null {
     const token = this.current();

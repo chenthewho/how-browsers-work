@@ -684,5 +684,94 @@ $('#btn-reset').addEventListener('click', () => { state.zoom = 1; state.offsetX 
 $('#input-width').addEventListener('change', render);
 $('#input-height').addEventListener('change', render);
 
+// ============================================================
+// 面板拖拽调整大小
+// ============================================================
+(function() {
+  const L = $('#left-panel');
+  const R = $('#right-panel');
+  const C = $('#center-panel');
+  const S = $('#source-panel');
+  const w = $('#workspace');
+
+  let dragState = null;
+  let overlay = null;
+
+  function startDrag(e, type, target) {
+    e.preventDefault();
+    dragState = { type, startX: e.clientX, startY: e.clientY };
+
+    if (type === 'col') {
+      const leftW = L.offsetWidth;
+      const rightW = R.offsetWidth;
+      dragState.leftW = leftW;
+      dragState.rightW = rightW;
+      if (target === 'left') dragState.side = 'left';
+      else dragState.side = 'right';
+    } else if (type === 'row') {
+      dragState.sourceH = S.offsetHeight;
+    }
+
+    // 覆盖层防止 canvas 吞掉 mousemove 事件
+    overlay = document.createElement('div');
+    overlay.className = type === 'row' ? 'resize-overlay row' : 'resize-overlay';
+    document.body.appendChild(overlay);
+
+    const h = document.getElementById(target === 'left' ? 'resize-left' : target === 'right' ? 'resize-right' : 'resize-source');
+    if (h) h.classList.add('active');
+  }
+
+  function onMove(e) {
+    if (!dragState) return;
+    const dx = e.clientX - dragState.startX;
+    const dy = e.clientY - dragState.startY;
+
+    if (dragState.type === 'col') {
+      if (dragState.side === 'left') {
+        const newW = Math.max(160, Math.min(500, dragState.leftW + dx));
+        L.style.width = newW + 'px';
+      } else {
+        // 拖右边：右侧面板变宽 = 左侧空间变小
+        const newW = Math.max(160, Math.min(500, dragState.rightW - dx));
+        R.style.width = newW + 'px';
+      }
+    } else if (dragState.type === 'row') {
+      const newH = Math.max(80, Math.min(400, dragState.sourceH + dy));
+      S.style.height = newH + 'px';
+      S.style.flexBasis = newH + 'px';
+      S.style.flexShrink = '0';
+    }
+  }
+
+  function stopDrag() {
+    if (!dragState) return;
+    const h = document.getElementById(
+      dragState.type === 'col'
+        ? (dragState.side === 'left' ? 'resize-left' : 'resize-right')
+        : 'resize-source'
+    );
+    if (h) h.classList.remove('active');
+    if (overlay) { overlay.remove(); overlay = null; }
+    dragState = null;
+  }
+
+  // 左右拖拽手柄
+  ['resize-left', 'resize-right'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('mousedown', e => startDrag(e, 'col', id === 'resize-left' ? 'left' : 'right'));
+    }
+  });
+
+  // 源码面板拖拽手柄
+  const elS = document.getElementById('resize-source');
+  if (elS) {
+    elS.addEventListener('mousedown', e => startDrag(e, 'row', 'source'));
+  }
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', stopDrag);
+})();
+
 // 初始渲染
 setTimeout(render, 300);

@@ -65,6 +65,8 @@ li { margin: 5px 0; }</textarea>
   <button id="btn-toggle-source" title="收起源码面板">▲</button>
 </section>
 
+<div class="resize-handle-h" id="resize-source"></div>
+
 <!-- 主工作区：三栏布局 -->
 <main id="workspace">
 
@@ -86,6 +88,8 @@ li { margin: 5px 0; }</textarea>
     </div>
   </aside>
 
+  <div class="resize-handle" id="resize-left"></div>
+
   <!-- 中栏：布局画布 -->
   <section id="center-panel">
     <canvas id="layout-canvas"></canvas>
@@ -94,6 +98,8 @@ li { margin: 5px 0; }</textarea>
       点击「渲染」查看布局可视化
     </div>
   </section>
+
+  <div class="resize-handle" id="resize-right"></div>
 
   <!-- 右栏：元素详情（Styles + Box Model） -->
   <aside id="right-panel">

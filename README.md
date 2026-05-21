@@ -251,6 +251,23 @@ runner.execute(`
 
 ---
 
+## 学习指南
+
+如果你是这个项目的新手，请从 [docs/README.md](./docs/README.md) 开始，按章节顺序学习：
+
+| 章节 | 内容 | 难度 |
+|---|---|---|
+| [第 1 章](./docs/01-dom.md) | DOM 树：浏览器的骨架 | 入门 |
+| [第 2 章](./docs/02-html-parser.md) | HTML 解析器：词法分析 + 树构造 | 核心 |
+| [第 3 章](./docs/03-css-parser.md) | CSS 解析器：选择器与属性值 | 核心 |
+| [第 4 章](./docs/04-style-resolution.md) | 样式计算：层叠、特异性、继承 | 核心 |
+| [第 5 章](./docs/05-layout-engine.md) | 布局引擎：盒模型 + 格式化上下文 | 精髓 |
+| [第 6 章](./docs/06-render-pipeline.md) | 渲染流水线：串起全部模块 | 串联 |
+| [第 7 章](./docs/07-multi-process.md) | 多进程架构：Chrome 的安全模型 | 进阶 |
+| [第 8 章](./docs/08-js-integration.md) | JavaScript 集成：沙箱与 DOM API | 进阶 |
+
+每章包含：原理解析、源码追踪、代码片段、图解、练习题。
+
 ## License
 
 MIT © 2026 thewho

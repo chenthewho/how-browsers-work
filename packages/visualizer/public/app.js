@@ -553,7 +553,6 @@ function renderStylesPanel(element) {
   stylesList.appendChild(authorRule);
 
   // 匹配的 CSS 规则
-  const B = window.Browser;
   if (state.authorSheet) {
     for (const rule of state.authorSheet.rules) {
       for (const sel of rule.selectors) {

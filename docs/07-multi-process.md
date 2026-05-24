@@ -111,38 +111,43 @@ export function startRenderer(): void {
 ## 7.4 消息流：一次完整的导航
 
 ```
-1. 浏览器进程：用户输入 URL
-2. 浏览器进程：RenderProcessHost.create() → fork 渲染进程
-3. 渲染进程：发送 Ready 消息
-4. 浏览器进程：HttpClient.fetch(URL) → HTML
-5. 浏览器进程：send({ type: 'LoadHTML', html: "..." })
-6. 渲染进程：接收 LoadHTML → 执行 Pipeline
-7. 渲染进程：send({ type: 'LayoutComplete', layoutRoot: {...} })
-8. 浏览器进程：接收 LayoutComplete → LayoutViewer 展示
+  时序图：一次完整的多进程导航
+
+  Browser Process                          Renderer Process
+  ═══════════════                          ════════════════
+       │                                         │
+       │  fork(RendererMain)                     │
+       │────────────────────────────────────────→│ 进程创建
+       │                                         │
+       │                      ◄── Ready ────────│ 渲染器就绪
+       │                                         │
+       │  HttpClient.fetch(URL)                  │
+       │  ↓                                      │
+       │  HTML: "<!DOCTYPE html>..."             │
+       │                                         │
+       │  ──── LoadHTML(html) ────────────────→ │
+       │                                         │ HTMLParser.parse()
+       │                                         │ CSSParser.parse()
+       │                                         │ StyleResolver.resolve()
+       │                                         │ LayoutEngine.layout()
+       │                                         │
+       │                      ◄── LayoutComplete │ 布局结果
+       │                           {layoutRoot}  │
+       │                                         │
+       │  LayoutViewer.render()                  │
+       │  ↓                                      │
+       │  文本布局输出到终端                        │
+       │                                         │
+       │  kill()                                 │
+       │────────────────────────────────────────→│ 进程终止
+       │                                         ✕
+
+  关键点：
+  • 渲染进程永远不直接访问文件系统或网络
+  • 如果渲染器在第 6 步崩溃，浏览器进程在第 7 步收到 exit 事件
+  • 浏览器进程可以创建新的渲染进程重试，用户无感知
 ```
 
-画成时序图：
-
-```
-Browser                          Renderer
-  │                                  │
-  ├─ fork() ────────────────────────→│
-  │                                  ├─ send(Ready)
-  │←── Ready ────────────────────────┤
-  │                                  │
-  ├─ fetch HTML                      │
-  │                                  │
-  ├─ send(LoadHTML) ────────────────→│
-  │                                  ├─ parse HTML
-  │                                  ├─ parse CSS
-  │                                  ├─ resolve styles
-  │                                  ├─ layout
-  │                                  ├─ send(LayoutComplete)
-  │←── LayoutComplete ───────────────┤
-  │                                  │
-  ├─ display layout                  │
-  ├─ kill() ────────────────────────→ x
-```
 
 ## 7.5 崩溃隔离测试
 

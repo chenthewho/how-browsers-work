@@ -55,7 +55,33 @@ export function matchesSelector(selector: ComplexSelector, element: IElement): b
 }
 ```
 
-**为什么要从右向左？** 因为这样能最快判断不匹配。以 `div.container > p + span` 为例：
+**为什么要从右向左？** 
+
+```
+图解：从右向左匹配  div.container > p + span
+
+  选择器结构:  [div.container]  >  [p]  +  [span]
+                  复合1         复合2       复合3
+                   ←── 匹配方向（从右向左）──←
+
+  Step 1: 目标元素是 <span> ?
+          ├─ 不是 → 直接返回 false（省去祖先检索）
+          └─ 是 ✓ → 继续
+
+  Step 2: 向上找匹配 [p] 且满足邻接兄弟(+)
+          ├─ 前一个兄弟是 <p> ? ✓ → 继续
+          └─ 不是 → false
+
+  Step 3: 向上找匹配 [div.container] 且满足父子(>)
+          ├─ 父元素是 <div.container> ? ✓ → 匹配成功！
+          └─ 不是 → false
+
+  为什么从右向左？
+  • 最右边的选择器直接针对目标元素，能最快淘汰不匹配
+  • Chrome 还用 Bloom filter 预判，连 DOM 树都不用走
+```
+
+以 `div.container > p + span` 为例：
 
 1. 先检查目标元素是不是 `span` → 不是？直接返回 false，省去祖先检索
 2. 是 span？向左找 `p` + 邻接兄弟关系
@@ -86,6 +112,20 @@ private getCascadePriority(origin: StyleOrigin, important: boolean): number {
 ```
 
 记忆口诀：**UA 普通 < 用户普通 < 作者普通 < 作者 !important < 用户 !important < UA !important**
+
+```
+  层叠优先级阶梯（数字越大越优先）
+  ┌──────────────────────────────────────┐
+  │ 7 │ UA !important    最高           │  e.g. 浏览器强行限制
+  │ 6 │ 用户 !important                 │  e.g. 用户强制字体大小
+  │ 5 │ 作者 !important                 │  e.g. color: red !important
+  │ 4 │ 动画（暂不支持）                 │
+  │ 3 │ 作者普通                         │  e.g. p { color: blue }
+  │ 2 │ 用户普通                         │  e.g. 用户自定义样式表
+  │ 1 │ UA 普通                          │  e.g. body { margin: 8px }
+  │ 0 │ 默认值 / 继承值                  │  所有属性的起点
+  └──────────────────────────────────────┘
+```
 
 同一优先级内，比特异性 `[a,b,c]`（第 3 章学的）。相同特异性，比源码顺序（后出现的覆盖）。
 

@@ -32,6 +32,42 @@ HTML 字符串
 
 ## 2.2 词法分析器：25 个状态的战士
 
+### 图解：哪些状态最常用？
+
+```
+                    ┌──────────────────────────────────────────────┐
+                    │               DATA（主状态）                    │
+                    │         所有普通文本在这里处理                    │
+                    └────┬──────────────────┬───────────────────────┘
+                         │ 看到 <           │ 看到 &
+           ┌─────────────▼──────────┐      └──→ 字符引用处理
+           │     TAG_OPEN            │
+           │    < 后面是什么？        │
+           └──┬──────────┬──────────┘
+              │ 字母      │ /
+    ┌─────────▼─────┐  ┌─▼────────────┐
+    │  TAG_NAME      │  │ END_TAG_OPEN │
+    │  读 div/p/...  │  │  读 /div...  │
+    └──┬─────────────┘  └──┬───────────┘
+       │ > 发射 StartTag   │ > 发射 EndTag
+       │ 空格 → 属性解析    │
+       │                   │
+  ┌────▼─────────────┐     │
+  │ BEFORE_ATTR_NAME  │     │
+  │ ↓                 │     │
+  │ ATTR_NAME         │     │
+  │ ↓                 │     │
+  │ BEFORE_ATTR_VALUE │     │
+  │ ↓                 │     │
+  │ ATTR_VALUE_DQ/SQ  │     │
+  │ ↓                 │     │
+  │ AFTER_ATTR_NAME ──┼─────┘
+  └──────────────────┘
+  
+  此外还有 COMMENT、DOCTYPE、RAWTEXT、RCDATA 等状态。
+  这 25 个状态完整实现了 HTML5 Tokenizer 规范。
+```
+
 打开 `packages/html-parser/src/Tokenizer.ts`，你会看到一个巨大的状态机：
 
 ```typescript
@@ -147,6 +183,34 @@ if (tagName === 'td' || tagName === 'th') {
 ```
 
 这就是为什么你可以写 `<table><tr>...` 而不写 `<tbody>`——浏览器帮你加了。
+
+### 图解：开放元素栈的变化
+
+```
+  解析 <html><head><title>Hello</title></head><body><div>
+
+  时间线      开放元素栈 (openElements)          插入模式
+  ─────────────────────────────────────────────────────────
+  DOCTYPE     []                              INITIAL→BEFORE_HTML
+  <html>      [html]                          BEFORE_HTML→BEFORE_HEAD
+  <head>      [html, head]                    BEFORE_HEAD→IN_HEAD
+  <title>     [html, head, title]             IN_HEAD→TEXT
+  "Hello"     [html, head, title]             TEXT（字符追加到 title）
+  </title>    [html, head]                    TEXT→IN_HEAD
+  </head>     [html]                          IN_HEAD→AFTER_HEAD
+  <body>      [html, body]                    AFTER_HEAD→IN_BODY
+  <div>       [html, body, div]               IN_BODY
+  </div>      [html, body]                    IN_BODY
+  </body>     [html, body]                    IN_BODY（保持）
+  </html>     [html, body]                    IN_BODY（忽略）
+
+                           栈底 → 栈顶
+  关键规则：
+  • 新元素 push，结束标签 pop
+  • 当前节点 = 栈顶元素
+  • <body> 遇到 <tr>：自动 push tbody → tr
+  • <p> 遇到 <div>：自动 pop p（p 不能嵌套块级元素）
+```
 
 ## 2.4 运行验证
 

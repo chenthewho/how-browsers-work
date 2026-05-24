@@ -28,6 +28,33 @@ nextSibling: INode | null;
 - 前一个兄弟
 - 后一个兄弟
 
+### 图解：链表 vs 数组
+
+```
+           Document
+              │ parentNode
+              ▼
+           <html> ──────────────┐
+              │ firstChild      │ lastChild
+              ▼                 ▼
+  ┌──────── <head> ──nextSib──> <body> ────────┐
+  │ prevSib ◄──────────────────               │
+  │                                            │
+  │         firstChild ──────────────────┐     │
+  │           ▼                          │     │
+  │         <div#main> ──nextSib──> <footer>  │
+  │           │                          ▲     │
+  │           │ firstChild              prevSib│
+  │           ▼                               │
+  │     "Hello World" (Text)                  │
+  └───────────────────────────────────────────┘
+
+  每个 ←→ 都是双向指针。没有数组，没有索引。
+  遍历 = 沿着指针走，增删 = 改 2 个指针。
+```
+
+> 看明白了吗？`<head>` 和 `<body>` 是兄弟（sibling），`<div>` 是 `<body>` 的子节点。`<div>` 的下一个兄弟是 `<footer>`，`<footer>` 的前一个兄弟是 `<div>`。这就是 Chrome 内存中 DOM 的真实形态。
+
 ### 为什么用链表而不是数组？
 
 | 操作 | 数组 | 链表 |
@@ -102,6 +129,27 @@ appendChild(child: INode): INode {
 ```
 
 关键：只需要操作 2-3 个指针，**不涉及任何数组搬移**。
+
+### 图解：appendChild 操作
+
+```
+  BEFORE:  parent                       AFTER:   parent
+           firstChild ──→ <child1>              firstChild ──→ <child1>
+           lastChild  ──→ <child1>              lastChild  ──→ <NEW>
+              ▲                                              ▲
+              │ (无 nextSibling)            <child1> ──nextSib──→ <NEW>
+              │                            <NEW> ───prevSib──→ <child1>
+           <NEW>
+           (orphan)
+
+  操作步骤 (O(1)):
+  1. 如果有 lastChild: lastChild.nextSibling = NEW
+  2. NEW.previousSibling = lastChild
+  3. lastChild = NEW
+  4. NEW.parentNode = parent
+
+  仅改 4 个指针，无需移动任何现有节点。
+```
 
 ## 1.4 Sibling 指针的精妙
 
